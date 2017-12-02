@@ -1,3 +1,5 @@
+{-# LANGUAGE BangPatterns    #-}
+{-# LANGUAGE TemplateHaskell #-}
 module Lib
     ( someFunc
     ) where
@@ -11,6 +13,8 @@ import           Network.Transport.TCP                              (createTrans
                                                                      defaultTCPParameters)
 import           System.Environment                                 (getArgs)
 import           System.Exit
+import Funcs
+import Types
 
 doWork :: Integer -> IO String
 doWork = complexity
@@ -29,9 +33,10 @@ worker (manager, workQueue) = do
       -- Wait for work to arrive. We will either be sent a message with an integer value to use as input for processing,
       -- or else we will be sent (). If there is work, do it, otherwise terminate
       receiveWait
-        [ match $ \n  -> do
+        [ match $ \f  -> do
             liftIO $ putStrLn $ "[Node " ++ (show us) ++ "] given work: " ++ show n
-            send manager (doWork n)
+            result <- lieftIO $ doWork f
+            send manager (f, result)
             liftIO $ putStrLn $ "[Node " ++ (show us) ++ "] finished work."
             go us -- note the recursion this function is called again!
         , match $ \ () -> do
