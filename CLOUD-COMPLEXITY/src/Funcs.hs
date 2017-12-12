@@ -3,9 +3,9 @@ complexity, clone,get, fetch,Repo,start_process
 )where
 
 import System.IO 
-import Control.Modad.State
+import Control.Monad
 import System.FilePath
-import Control.Distributed.Process
+--import Control.Distributed.Process
 import Control.Exception
 import Prelude
 import System.Process
@@ -20,7 +20,7 @@ complexity f = start_process("stack","exec -- argon --json "++f)
 
 clone :: URL -> Directory -> IO ()
 clone url directory = do
-	real <- doesDirectoryExist dir
+	real <- doesDirectoryExist directory
 	if real
 		then callProcess "git" ["clone",url]
 		else return ()
@@ -28,8 +28,8 @@ clone url directory = do
 get :: URL -> Directory -> IO [String]
 get url dir = do
 	clone url dir
-	commits <- sendCommand("git","log --pretty=format: '%H' "++ dir)
-	return words commits
+	commits <- start_process("git","log --pretty=format: '%H' "++ dir)
+	return $ words commits
 
 fetch :: Repo -> IO ()
 fetch (url, dir,commit) = do 
@@ -37,7 +37,8 @@ fetch (url, dir,commit) = do
 	readCreateProcess ((proc "git" ["reset","--hard",commit]){cwd = Just dir})""
 	return ()
 
-start_process :: String -> String -> IO String
-start_process cmd args = do 
-	(_,Just hout,ph) <- createProcess (proc cmd $ words args) { std_out = CreatePipe }
-	hGetContents hout
+start_process :: (String, String) -> IO String
+start_process (cmd,arg) = do
+  (_,Just hout,_,ph) <- createProcess (proc cmd $ words arg){ std_out = CreatePipe }
+  hGetContents hout
+

@@ -1,3 +1,5 @@
+module Types where 
+	
 type URL = String
 type Directory = String
 type Commit = String
