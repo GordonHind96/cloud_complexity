@@ -22,7 +22,6 @@ import Control.Concurrent.STM.TVar
 import           System.Environment                                 (getArgs)
 import           System.Exit
 import Funcs
---import Types
 import Models
 
 doWork :: String -> IO String

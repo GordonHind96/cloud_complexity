@@ -5,7 +5,6 @@ complexity, clone,get, fetch,Repo,start_process
 import System.IO 
 import Control.Monad
 import System.FilePath
---import Control.Distributed.Process
 import Control.Exception
 import Prelude
 import System.Process
@@ -28,7 +27,7 @@ clone url directory = do
 get :: URL -> Directory -> IO [String]
 get url dir = do
 	clone url dir
-	commits <- start_process("git","log --pretty=format: '%H' "++ dir)
+	commits <- start_process("git","--git-dir " ++ dir ++"--pretty=format: '%H' ")
 	return $ words commits
 
 fetch :: Repo -> IO ()
