@@ -19,17 +19,18 @@ import Control.Concurrent.STM.TVar
 import           System.Environment                                 (getArgs)
 import           System.Exit
 import Funcs
-import Models
 
-doWork :: String -> IO String
+doWork :: String -> Integer
 doWork = complexity
 
-worker :: (ProcessId, ProcessId) -> Process ()
-worker (manager, workQueue) = do 
-	us <- getSelfPid
-	liftIO $ putStrLn $ "Starting worker: " ++ show us
-	go us
-   where
+worker :: ( ProcessId  -- The processid of the manager (where we send the results of our work)
+         , ProcessId) -- the process id of the work queue (where we get our work from)
+       -> Process ()
+worker (manager, workQueue) = do
+    us <- getSelfPid              -- get our process identifier
+    liftIO $ putStrLn $ "Starting worker: " ++ show us
+    go us
+  where
     go :: ProcessId -> Process ()
     go us = do
 
@@ -38,10 +39,9 @@ worker (manager, workQueue) = do
       -- Wait for work to arrive. We will either be sent a message with an integer value to use as input for processing,
       -- or else we will be sent (). If there is work, do it, otherwise terminate
       receiveWait
-        [ match $ \f  -> do
-            liftIO $ putStrLn $ "[Node " ++ (show us) ++ "] given work: " ++ show f
-            result <- liftIO $ doWork f
-            send manager (f, result)
+        [ match $ \n  -> do
+            liftIO $ putStrLn $ "[Node " ++ (show us) ++ "] given work: " ++ show n
+            send manager (doWork n)
             liftIO $ putStrLn $ "[Node " ++ (show us) ++ "] finished work."
             go us -- note the recursion this function is called again!
         , match $ \ () -> do
