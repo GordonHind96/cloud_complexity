@@ -1,5 +1,7 @@
 module Funcs(complexity
 )where
 
-complexity:: String -> Integer
-complexity = 4 
+import Data.Char
+
+complexity:: String -> Int
+complexity s =  (length s)

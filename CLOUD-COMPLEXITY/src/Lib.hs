@@ -20,8 +20,8 @@ import           System.Environment                                 (getArgs)
 import           System.Exit
 import Funcs
 
-doWork :: String -> Integer
-doWork = complexity
+doWork :: String -> Int
+doWork s = (complexity s)
 
 worker :: ( ProcessId  -- The processid of the manager (where we send the results of our work)
          , ProcessId) -- the process id of the work queue (where we get our work from)
