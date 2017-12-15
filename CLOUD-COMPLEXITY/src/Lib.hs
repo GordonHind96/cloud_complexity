@@ -11,9 +11,6 @@ import Control.Monad
 import Network.Transport.TCP                                (createTransport,defaultTCPParameters)
 import Data.Binary
 import Data.Either 
-import Pipes
-import Pipes.Safe (runSafeT)
-import Pipes.Prelude as P hiding (show, length)
 import GHC.Generics (Generic)
 import Argon hiding (defaultConfig)
 import Control.Concurrent
@@ -53,39 +50,45 @@ worker (manager, workQueue) = do
         ]
 
 remotable ['worker]
+
 rtable :: RemoteTable 
 rtable = Lib.__remoteTable initRemoteTable
 
---manager :: Integer -> [NodeId] -> Process Integer
-manager runData@Run{..} workers pool = do
+manager :: Integer    -- The number range we wish to generate work for (there will be n work packages)
+        -> [NodeId]   -- The set of cloud haskell nodes we will initalise as workers
+        -> Process Integer
+manager n workers = do
   us <- getSelfPid
-  count <- liftIO $ atomically $ newTVar 0 
-  liftIO $ fetch (url,dir,commit)
-  liftIO $ runDB pool $ insertBegin id commit
-  
-  let source = allFiles dir
-  workQueue <- spawnLocal $ do 
-    runSafeT $ runEffect $ for source (\ f -> lift $ lift $ sendwork id f commit pool)
-    final <- liftIO $ runDB pool $ fetchFinal id commit
-    liftIO $ atomically $ writeTVar count final
+
+
+  workQueue <- spawnLocal $ do
+    -- Return the next bit of work to be done
+    forM_ [1 .. n] $ \m -> do
+      pid <- expect   -- await a message from a free worker asking for work
+      send pid m     -- send th  
     forever $ do
       pid <- expect
       send pid ()
-  forM_ workers $ \ nid -> spawn nid $ $(mkClosure 'worker) (us,workQueue)
-  fetchResults id count 0 commit pool
-  
-  liftIO $ runDB pool $ insertEnd id commit
-  return ()
+  forM_ workers $ \ nid -> spawn nid ($(mkClosure 'worker) (us, workQueue))
+  liftIO $ putStrLn $ "[Manager] Workers spawned"
+  return 1
+  --sumIntegers (fromIntegral n)
 
-sendwork id f commit pool = do
-  liftIO $ runDB pool $ insertFile id commit f
-  pid <- expect
-  send pid f
+someFunc :: IO ()
+someFunc = do
 
-fetchResults id count curCount commit pool = do
-  count' <- liftIO $ atomically $ readTVar count
-  unless (curCount == count') $ do
-    (f,result) <- expect :: Process(String, String)
-    liftIO $ runDB pool $ insertResult id commit f result
-    fetchResults id count (curCount + 1) commit pool
 
+  args <- getArgs
+
+  case args of
+    ["manager", host, port, n] -> do
+      putStrLn "Starting Node as Manager"
+      backend <- initializeBackend host port rtable
+      startMaster backend $ \workers -> do
+        result <- manager (read n) workers
+        liftIO $ print result
+    ["worker", host, port] -> do
+      putStrLn "Starting Node as Worker"
+      backend <- initializeBackend host port rtable
+      startSlave backend
+    _ -> putStrLn "Bad parameters"
